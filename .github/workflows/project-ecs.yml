@@ -1,0 +1,73 @@
+name: Deploy to Amazon ECS
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: ap-south-1                   
+  ECR_REPOSITORY: ecs-repo         
+  ECS_SERVICE: service1               
+  ECS_CLUSTER: Ecs-java                 
+  ECS_TASK_DEFINITION: latest-task
+  COUNT: 1
+  CONTAINER_NAME: ecs-container
+  
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Build project with Maven
+      run: mvn -B package --file pom.xml
+        
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - name: create cluster.
+      run: |
+          aws ecs create-cluster --cluster-name $ECS_CLUSTER
+
+    - name: Create Task Definition
+      run: |
+          aws ecs register-task-definition --cli-input-json file://task-definition.json
+
+    - name: Create ECS Service
+      run: |
+          #aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment 
+           aws ecs create-service \
+           --cluster $ECS_CLUSTER \
+           --service-name $ECS_SERVICE \
+           --task-definition $ECS_TASK_DEFINITION \
+           --desired-count $COUNT \
+           --launch-type FARGATE \
+           --network-configuration "awsvpcConfiguration={subnets=[subnet-08254dbea9e3e5ae6],securityGroups=[sg-095a954b2e7d062c8],assignPublicIp=ENABLED}"
