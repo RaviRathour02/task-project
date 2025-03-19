@@ -1,0 +1,63 @@
+name: Deploy to AKS
+
+env:
+  AZURE_CONTAINER_REGISTRY: myrepo6473
+  CONTAINER_NAME: ravi-cont
+  RESOURCE_GROUP: ravi-grp
+  DEPLOYMENT_MANIFEST_PATH: deployment.yml
+  CLUSTER_NAME: ravi-cluster
+  
+  
+  
+on:
+  push:
+    branches: [ "main" ]
+  
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build project with Maven
+      run: mvn -B package --file pom.xml
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Builds and pushes an image up to your Azure Container Registry
+    - name: Build and push image to ACR
+      run: |
+          az acr build --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }} --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.RESOURCE_GROUP }} .
+
+    - name: Set up kubelogin for non-interactive login
+      uses: azure/use-kubelogin@v1
+      with:
+        kubelogin-version: 'v0.0.25'
+
+      # Retrieves your Azure Kubernetes Service cluster's kubeconfig file
+    - name: Get K8s context
+      uses: azure/aks-set-context@v3
+      with:
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        cluster-name: ${{ env.CLUSTER_NAME }}
+        admin: 'false'
+        use-kubelogin: 'true'
+
+      # Deploys application based on given manifest file
+    - name: Deploys application
+      uses: Azure/k8s-deploy@v4
+      with:
+        action: deploy
+        manifests: ${{ env.DEPLOYMENT_MANIFEST_PATH }}
+        images: |
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
