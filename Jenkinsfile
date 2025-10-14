@@ -4,7 +4,7 @@ pipeline{
   stages{
     stage("Build"){
       steps {
-        sh "mvn -B compile --file pom.xml"
+        sh "mvn clean -X install --file pom.xml"
       }
     }
   }
