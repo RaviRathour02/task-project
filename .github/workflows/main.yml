@@ -8,6 +8,7 @@ on:
 
 env:
   APP_NAME: sample-app
+  IMAGE_TAG: ${{ github.run_number }}
 
 jobs:
   build:
