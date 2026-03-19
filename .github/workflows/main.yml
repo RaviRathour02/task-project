@@ -41,6 +41,12 @@ jobs:
     - name: Functional Tests
       run: mvn verify -Pfunctional
 
+    
+    # ---------------- Performance Tests ----------------
+    - name: Performance Tests
+      run: mvn verify -Pperformance
+      continue-on-error: true   # usually non-blocking
+
    #-----------------nexus push --------------------
     
     - name: Build and Deploy to Nexus
@@ -48,3 +54,10 @@ jobs:
       env:
         NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+
+    
+   # ---------------- Docker Build ----------------
+    - name: Docker Build
+      run: |
+        docker build -t ${APP_NAME}:${IMAGE_TAG} .
+
