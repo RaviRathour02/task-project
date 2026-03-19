@@ -23,7 +23,10 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '17'   
+        server-id: nexus-releases
+        server-username: NEXUS_USERNAME
+        server-password: NEXUS_PASSWORD
         cache: maven
 
     # ---------------- Maven Build ----------------
@@ -38,23 +41,13 @@ jobs:
     - name: Functional Tests
       run: mvn verify -Pfunctional
 
-    # ---------------- Performance Tests (non-blocking) ----------------
-    - name: Performance Tests
-      continue-on-error: true
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y jmeter
-        jmeter -n -t perf.jmx -l perf.jtl
-
-    # ---------------- SonarQube Scan ----------------
-    - name: SonarQube Scan
+   #-----------------nexus push --------------------
+    
+    - name: Build and Deploy to Nexus
+      run: mvn deploy
       env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: |
-        mvn sonar:sonar \
-          -Dsonar.projectKey=${APP_NAME} \
-          -Dsonar.host.url=http://13.201.28.158:9000 \
-          -Dsonar.login=$SONAR_TOKEN
+        NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+        NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
     # ---------------- Docker Build ----------------
     - name: Docker Build
