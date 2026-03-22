@@ -16,6 +16,8 @@ spec:
       labels:
         app: java-app
     spec:
+      imagePullSecrets:
+      - name: nexus-regcred
       containers:
       - name: myapp
         image: 13.127.72.63:8082/java-app:15
