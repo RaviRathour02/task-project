@@ -20,7 +20,7 @@ spec:
       - name: nexus-regcred
       containers:
       - name: myapp
-        image: 13.127.72.63:8082/java-app:15
+        image: 13.127.72.63:8082/java-app:17
         ports:
         - containerPort: 8080
   strategy:
